@@ -1,29 +1,33 @@
 <?php
 /**
- * Bestellexport als CSV - (c) Copyright 2010-2018 by Hetfield - www.MerZ-IT-SerVice.de
- *
- * Created by PhpStorm.
- * User: Hetfield
+ * --------------------------------------------------------------
+ * File: mits_bestellexport.php
  * Date: 21.07.2017
  * Time: 09:40
+ *
+ * Author: Hetfield
+ * Copyright: (c) 2019 - MerZ IT-SerVice
+ * Web: https://www.merz-it-service.de
+ * Contact: info@merz-it-service.de
+ * --------------------------------------------------------------
  */
 
-require('includes/application_top.php');
+require_once ('includes/application_top.php');
+
 if (defined('MODULE_MITS_BESTELLEXPORT_STATUS') && MODULE_MITS_BESTELLEXPORT_STATUS == 'true') {
   $fehler = 0;
   if (isset($_POST['action']) && $_POST['action'] == 'export') {
 
-    $start = $_POST['startyear'] . '-' . $_POST['startmonth'] . '-' . $_POST['startday'] . ' 00:00:00';  // Startdatum im datetime-Format zusammensetzen 0000-00-00 00:00:00
-    $end = $_POST['endyear'] . '-' . $_POST['endmonth'] . '-' . $_POST['endday'] . ' 00:00:00';  // Enddatum im datetime-Format zusammensetzen
-    if ($_POST['status'] != '-1') {
-      $orderstatus = ' AND orders_status = "' . xtc_db_input($_POST['status']) . '"';
+    if (isset($_POST['startyear']) && isset($_POST['startmonth']) && isset($_POST['startday']) && isset($_POST['endyear']) && isset($_POST['endmonth']) && isset($_POST['endday'])) {
+      $start = $_POST['startyear'] . '-' . $_POST['startmonth'] . '-' . $_POST['startday'] . ' 00:00:00';  // Startdatum im datetime-Format zusammensetzen 0000-00-00 00:00:00
+      $end = $_POST['endyear'] . '-' . $_POST['endmonth'] . '-' . $_POST['endday'] . ' 00:00:00';  // Enddatum im datetime-Format zusammensetzen
+    } else {
+      $start = '0000-00-00 00:00:00';
+      $end = date('Y-m-d') . ' 00:00:00';
     }
-    if ($_POST['payment_art'] != '1') {
-      $payment = ' AND payment_class = "' . xtc_db_input($_POST['payment_art']) . '"';
-    }
-    if ($_POST['shipping_art'] != '1') {
-      $shipping = ' AND shipping_class = "' . xtc_db_input($_POST['shipping_art']) . '"';
-    }
+    $orderstatus = (isset($_POST['status']) && $_POST['status'] != '-1') ? ' AND orders_status = "' . xtc_db_input($_POST['status']) . '"' : '';
+    $payment = (isset($_POST['payment_art']) && $_POST['payment_art'] != '1') ? ' AND payment_class = "' . xtc_db_input($_POST['payment_art']) . '"' : '';
+    $shipping = (isset($_POST['shipping_art']) && $_POST['shipping_art'] != '1') ? ' AND shipping_class = "' . xtc_db_input($_POST['shipping_art']) . '"' : '';
 
     $orders_query = xtc_db_query('SELECT * FROM ' . TABLE_ORDERS . ' WHERE (date_purchased BETWEEN "' . xtc_db_input($start) . '" AND "' . xtc_db_input($end) . '") ' . $payment . $shipping . $orderstatus . ' ORDER BY orders_id ASC');
 
@@ -80,7 +84,7 @@ if (defined('MODULE_MITS_BESTELLEXPORT_STATUS') && MODULE_MITS_BESTELLEXPORT_STA
         $paymethod = $orders['payment_class'];
         if ($orders['payment_class'] != '' && $orders['payment_class'] != 'no_payment') {
           if (file_exists(DIR_FS_LANGUAGES . $orders['language'] . '/modules/payment/' . $orders['payment_class'] . '.php') && is_file(DIR_FS_LANGUAGES . $orders['language'] . '/modules/payment/' . $orders['payment_class'] . '.php')) {
-            include(DIR_FS_LANGUAGES . $orders['language'] . '/modules/payment/' . $orders['payment_class'] . '.php');
+            include_once(DIR_FS_LANGUAGES . $orders['language'] . '/modules/payment/' . $orders['payment_class'] . '.php');
             $paymethod = strip_tags(constant(strtoupper('MODULE_PAYMENT_' . $orders['payment_class'] . '_TEXT_TITLE')));
           }
         }
@@ -139,15 +143,16 @@ if (defined('MODULE_MITS_BESTELLEXPORT_STATUS') && MODULE_MITS_BESTELLEXPORT_STA
         $exportdata .= '"' . $paymethod . '";';
         $exportdata .= '"' . $orders['currency'] . '";';
 
-        $ot_tax_value = '0';
-        $ot_total_value = '0';
-        $ot_shipping_value = '0';
-        $ot_cod_value = '0';
+        $ot_tax_value = 0;
+        $ot_total_value = 0;
+        $ot_shipping_value = 0;
+        $ot_cod_value = 0;
+
         $orders_total_query = xtc_db_query('SELECT * FROM ' . TABLE_ORDERS_TOTAL . ' WHERE orders_id = ' . (int)$orders['orders_id']);
         if (xtc_db_num_rows($orders_total_query)) {
           while ($orders_total = xtc_db_fetch_array($orders_total_query)) {
             if ($orders_total['class'] == 'ot_tax') {
-              $ot_tax_value .= $ot_tax_value + $orders_total['value'];
+              $ot_tax_value = $ot_tax_value + $orders_total['value'];
             } elseif ($orders_total['class'] == 'ot_total') {
               $ot_total_value = $orders_total['value'];
             } elseif ($orders_total['class'] == 'ot_shipping') {
@@ -270,8 +275,8 @@ require(DIR_WS_INCLUDES . 'head.php');
                     for ($i = 0; $i < count($payments); $i++) {
                       $pay = substr($payments[$i], 0, strrpos($payments[$i], '.'));
                       if (file_exists(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/payment/' . $payments[$i]) && is_file(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/payment/' . $payments[$i])) {
-                        require(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/payment/' . $payments[$i]);
-                        $payment_text = constant(MODULE_PAYMENT_ . strtoupper($pay) . _TEXT_TITLE);
+                        require_once(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/payment/' . $payments[$i]);
+                        $payment_text = constant('MODULE_PAYMENT_' . strtoupper($pay) . '_TEXT_TITLE');
                       } else {
                         $payment_text = $pay;
                       }
@@ -287,12 +292,12 @@ require(DIR_WS_INCLUDES . 'head.php');
                     for ($i = 0; $i < count($shippings); $i++) {
                       $ship = substr($shippings[$i], 0, strrpos($shippings[$i], '.'));
                       if (file_exists(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/shipping/' . $shippings[$i]) && is_file(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/shipping/' . $shippings[$i])) {
-                        require(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/shipping/' . $shippings[$i]);
-                        $shipping_text = constant(MODULE_SHIPPING_ . strtoupper($ship) . _TEXT_TITLE);
+                        require_once(DIR_FS_LANGUAGES . $_SESSION['language'] . '/modules/shipping/' . $shippings[$i]);
+                        $shipping_text = constant('MODULE_SHIPPING_' . strtoupper($ship) . '_TEXT_TITLE');
                       } else {
                         $shipping_text = $ship;
                       }
-                      $ship_art[] = array('id' => $ship, 'text' => $shipping_text);
+                      $ship_art[] = array('id' => $ship . '_' . $ship, 'text' => $shipping_text);
                     }
                     echo xtc_draw_pull_down_menu('shipping_art', $ship_art, 1, 'id="shipping_art"');
 
@@ -300,7 +305,7 @@ require(DIR_WS_INCLUDES . 'head.php');
                     echo ' <label for="status">' . TEXT_ORDER_STATUS . ': </label>';
                     $statusarray = array();
                     $statusarray[] = array('id' => '-1', 'text' => 'alle');
-                    $status_query = xtc_db_query('SELECT orders_status_id, orders_status_name FROM ' . TABLE_ORDERS_STATUS . ' WHERE language_id = "' . xtc_db_input((int)$_SESSION['languages_id']) . '"');
+                    $status_query = xtc_db_query('SELECT orders_status_id, orders_status_name FROM ' . TABLE_ORDERS_STATUS . ' WHERE language_id = "' . (int)$_SESSION['languages_id'] . '"');
                     if (xtc_db_num_rows($status_query)) {
                       while ($statuse = xtc_db_fetch_array($status_query)) {
                         $statusarray[] = array('id' => $statuse['orders_status_id'], 'text' => $statuse['orders_status_name']);

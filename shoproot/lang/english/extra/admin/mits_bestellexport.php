@@ -1,11 +1,15 @@
 <?php
 /**
- * Bestellexport als CSV - (c) Copyright 2010-2017 by Hetfield - www.MerZ-IT-SerVice.de
- *
- * Created by PhpStorm.
- * User: Hetfield
+ * --------------------------------------------------------------
+ * File: mits_bestellexport.php
  * Date: 21.07.2017
  * Time: 09:57
+ *
+ * Author: Hetfield
+ * Copyright: (c) 2019 - MerZ IT-SerVice
+ * Web: https://www.merz-it-service.de
+ * Contact: info@merz-it-service.de
+ * --------------------------------------------------------------
  */
 
-define('MITS_BOX_BESTELLEXPORT', 'MITS Order export as CSV');
+defined('MITS_BOX_BESTELLEXPORT') or define('MITS_BOX_BESTELLEXPORT', 'MITS Order export as CSV');
